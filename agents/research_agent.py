@@ -30,7 +30,7 @@ class ResearchAgent(BaseAgent):
             api_key: The OpenAI API key
             temperature: The temperature setting for the LLM
         """
-        print(f"Initializing {name} with model {model_name}")
+        print(f"Initializing {name} with {model_name}")
         super().__init__(name, description, model_name, api_key, temperature)
         self.tavily_client = TavilySearchClient()
         

@@ -23,7 +23,7 @@ class TavilySearchClient:
         if not self.api_key:
             print("WARNING: No Tavily API key provided. Searches will fail.")
         try:
-            print(f"Initializing Tavily client with API key: {self.api_key[:5]}...")
+            print(f"Initializing Tavily client...")
             self.client = TavilyClient(api_key=self.api_key)
             print("Tavily client initialized successfully.")
         except Exception as e:

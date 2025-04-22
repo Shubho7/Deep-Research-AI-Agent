@@ -42,7 +42,7 @@ class BaseAgent:
         
         # If primary model fails, try fallback models
         if self.llm is None:
-            print(f"Failed to initialize primary model: {model_name}. Trying fallback models...")
+            print(f"Failed to initialize {model_name}. Trying fallback models...")
             for fallback_model in FALLBACK_MODELS:
                 if fallback_model != model_name:  # Don't retry the same model
                     print(f"Trying fallback model: {fallback_model}")
@@ -69,12 +69,12 @@ class BaseAgent:
             The initialized LLM, or None if initialization failed
         """
         try:
-            print(f"Initializing {self.name} with model {model_name}")
+            print(f"Initializing {self.name} with {model_name}")
             llm = ChatGoogleGenerativeAI(
                 model=model_name,
                 google_api_key=self.api_key,
                 temperature=self.temperature,
-                convert_system_message_to_human=True,
+                # Removed deprecated parameter: convert_system_message_to_human=True
                 safety_settings={
                     1: 0,  # HARM_CATEGORY_HARASSMENT: BLOCK_NONE
                     2: 0,  # HARM_CATEGORY_HATE_SPEECH: BLOCK_NONE
@@ -89,10 +89,10 @@ class BaseAgent:
                 print(f"Testing connection to {model_name}...")
                 test_response = llm.invoke("Respond with 'ok' if you can read this message.")
                 if hasattr(test_response, 'content') and test_response.content:
-                    print(f"Model {model_name} initialized and tested successfully.")
+                    print(f"{model_name} initialized.")
                     return llm
                 else:
-                    print(f"Model {model_name} initialized but test failed: empty response")
+                    print(f"{model_name} initialized but test failed: empty response")
                     return None
             except Exception as e:
                 print(f"Error testing model {model_name}: {e}")
@@ -167,4 +167,4 @@ class BaseAgent:
         Returns:
             A dictionary containing the agent's output
         """
-        raise NotImplementedError("Subclasses must implement the run method") 
+        raise NotImplementedError("Subclasses must implement the run method")

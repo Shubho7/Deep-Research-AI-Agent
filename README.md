@@ -4,7 +4,7 @@ A deep research AI agentic system built using LangChain, LangGraph, and Tavily.
 
 ## Overview
 
-DeepResearchAI leverages Google's Gemini LLM models (gemini-1.5-flash & gemini-2.0-flash) to perform comprehensive research on any topic. The system integrates web search capabilities through the Tavily API to gather information and then uses Gemini to synthesize the findings into a coherent research document. The architecture is built on LangChain's component framework and LangGraph's state management system to create a robust, agentic research workflow.
+DeepResearchAI leverages Google's Gemini LLM models (`gemini-1.5-flash` & `gemini-2.0-flash`) to perform comprehensive research on any topic. The system integrates web search capabilities through the Tavily API to gather information and then uses Gemini to synthesize the findings into a coherent research document. The architecture is built on LangChain's component framework and LangGraph's state management system to create a robust, agentic research workflow.
 
 ## Features
 

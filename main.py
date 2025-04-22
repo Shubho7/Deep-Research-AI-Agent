@@ -39,10 +39,10 @@ def main():
             args.queries = 3
     
     # Run the research workflow
-    print(f"\nResearching topic: {args.topic}")
+    print(f"\nResearch topic: {args.topic}")
     print(f"Research depth: {args.depth}")
     print(f"Number of queries: {args.queries}")
-    print("\nStarting research workflow with Google Gemini...\n")
+    print("\nStarting the research workflow\n")
     
     result = run_research_workflow(
         research_topic=args.topic,
