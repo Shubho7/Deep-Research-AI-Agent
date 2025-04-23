@@ -175,11 +175,11 @@ class ResearchAgent(BaseAgent):
         print(f"\n=== Starting research on topic: '{research_topic}' ===")
         try:
             # Generate search queries
-            print("Step 1: Generating search queries...")
+            print("Generating search queries...")
             queries = self.generate_search_queries(research_topic, num_queries)
             
             # Perform searches for each query
-            print("Step 2: Performing searches for each query...")
+            print("Performing searches for each query...")
             search_results = []
             for i, query in enumerate(queries):
                 print(f"  Searching for query {i+1}/{len(queries)}: '{query}'")
@@ -189,11 +189,11 @@ class ResearchAgent(BaseAgent):
                 self.add_to_memory(results)
             
             # Format the search results for synthesis
-            print("Step 3: Formatting search results...")
+            print("Formatting search results...")
             formatted_results = self.format_search_results(search_results)
             
             # Synthesize the information
-            print("Step 4: Synthesizing information...")
+            print("Synthesizing information...")
             # The chain is now a callable function, not an object with invoke()
             synthesis = self.synthesis_chain({
                 "research_topic": research_topic,
