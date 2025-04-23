@@ -6,6 +6,7 @@ import json
 import os
 from graph.workflow import run_research_workflow
 from utils.config import validate_config
+from utils.pdf_export import export_to_pdf
 
 def main():
     """Main entry point for the application."""
@@ -69,6 +70,21 @@ def main():
         with open(args.output, 'w', encoding='utf-8') as f:
             json.dump(result, f, indent=2)
         print(f"\nResults saved to {args.output}")
+    
+    # Ask user if they want to save as PDF
+    if result.get("status") == "complete" and "final_answer" in result:
+        save_pdf = input("\nWould you like to save the research as a PDF? (y/n): ").lower().strip()
+        if save_pdf == 'y' or save_pdf == 'yes':
+            pdf_path = input("Enter PDF output path (leave blank for auto-generated filename): ").strip()
+            try:
+                saved_path = export_to_pdf(
+                    research_topic=result['research_topic'],
+                    final_answer=result['final_answer'],
+                    output_path=pdf_path if pdf_path else None
+                )
+                print(f"\nPDF successfully saved to: {saved_path}")
+            except Exception as e:
+                print(f"\nError saving PDF: {e}")
 
 if __name__ == "__main__":
-    main() 
+    main()
