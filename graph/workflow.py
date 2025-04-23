@@ -7,6 +7,8 @@ import json
 from langgraph.graph import StateGraph, END
 from agents.research_agent import ResearchAgent
 from agents.drafting_agent import DraftingAgent
+from agents.fact_checking_agent import FactCheckingAgent
+from agents.citation_agent import CitationAgent
 
 # Global variable to store the latest research result
 # This is a workaround for state handling issues in the LangGraph execution
@@ -14,9 +16,11 @@ _latest_research_result = None
 
 # Define state types
 class NodeNames(str, Enum):
-    RESEARCH = "research_node"  # Renamed to avoid conflict with state field
-    DRAFT = "draft_node"        # Renamed to avoid conflict with state field
-    IMPROVE = "improve_node"    # Renamed for consistency
+    RESEARCH = "research_node"  
+    DRAFT = "draft_node"   
+    FACT_CHECK = "fact_check_node"  
+    CITATION = "citation_node"   
+    IMPROVE = "improve_node"    
 
 class ResearchState(TypedDict):
     """State for the research workflow."""
@@ -24,9 +28,11 @@ class ResearchState(TypedDict):
     research_depth: str
     num_queries: int
     research_results: Dict[str, Any]
-    draft_result: Dict[str, Any]  # Renamed from 'draft' to avoid conflict
+    draft_result: Dict[str, Any] 
+    fact_check_result: Dict[str, Any]  
+    citation_result: Dict[str, Any] 
     final_answer: str
-    status: Literal["research", "draft", "improve", "complete", "error"]
+    status: Literal["research", "draft", "fact_check", "citation", "improve", "complete", "error"]
     error: str
 
 def create_research_workflow() -> StateGraph:
@@ -39,6 +45,8 @@ def create_research_workflow() -> StateGraph:
     # Create the agents
     research_agent = ResearchAgent()
     drafting_agent = DraftingAgent()
+    fact_checking_agent = FactCheckingAgent() 
+    citation_agent = CitationAgent()  
     
     # Create the graph
     workflow = StateGraph(ResearchState)
@@ -74,13 +82,13 @@ def create_research_workflow() -> StateGraph:
             draft_results = drafting_agent.run(
                 research_topic=state["research_topic"],
                 research_synthesis=research_synthesis,
-                improve=False  # We'll do improvement in a separate step
+                improve=False 
             )
             
             return {
                 **state,
-                "draft_result": draft_results,  # Updated to use new key name
-                "status": "improve"
+                "draft_result": draft_results,
+                "status": "fact_check"  
             }
         except Exception as e:
             return {
@@ -89,16 +97,78 @@ def create_research_workflow() -> StateGraph:
                 "error": f"Drafting error: {str(e)}"
             }
     
-    def improve(state: ResearchState) -> ResearchState:
-        """Run the drafting agent to improve the initial draft."""
+    def fact_check(state: ResearchState) -> ResearchState:
+        """Run the fact-checking agent to verify information accuracy."""
         try:
-            # Extract the initial draft from the draft results
-            initial_draft = state["draft_result"]["initial_draft"]  # Updated to use new key name
+            # Get the research synthesis and initial draft
+            research_synthesis = state["research_results"]["synthesis"]
+            initial_draft = state["draft_result"]["initial_draft"]
+            
+            # Run the fact-checking agent
+            fact_check_results = fact_checking_agent.run(
+                research_topic=state["research_topic"],
+                research_synthesis=research_synthesis,
+                draft=initial_draft
+            )
+            
+            return {
+                **state,
+                "fact_check_result": fact_check_results,
+                "status": "citation"
+            }
+        except Exception as e:
+            return {
+                **state,
+                "status": "error",
+                "error": f"Fact-checking error: {str(e)}"
+            }
+    
+    def citation(state: ResearchState) -> ResearchState:
+        """Run the citation agent to format and validate sources."""
+        try:
+            # Get the research synthesis and fact-checked draft
+            research_synthesis = state["research_results"]["synthesis"]
+            
+            # Use the corrected draft from fact-checking if available, otherwise use the initial draft
+            if "fact_check_result" in state and "corrected_draft" in state["fact_check_result"]:
+                draft_to_process = state["fact_check_result"]["corrected_draft"]
+            else:
+                draft_to_process = state["draft_result"]["initial_draft"]
+            
+            # Run the citation agent
+            citation_results = citation_agent.run(
+                research_topic=state["research_topic"],
+                research_synthesis=research_synthesis,
+                draft=draft_to_process
+            )
+            
+            return {
+                **state,
+                "citation_result": citation_results,
+                "status": "improve"
+            }
+        except Exception as e:
+            return {
+                **state,
+                "status": "error",
+                "error": f"Citation error: {str(e)}"
+            }
+    
+    def improve(state: ResearchState) -> ResearchState:
+        """Run the drafting agent to improve the final draft."""
+        try:
+            # Use the final draft from citation agent if available, otherwise use the corrected draft or initial draft
+            if "citation_result" in state and "final_draft" in state["citation_result"]:
+                draft_to_improve = state["citation_result"]["final_draft"]
+            elif "fact_check_result" in state and "corrected_draft" in state["fact_check_result"]:
+                draft_to_improve = state["fact_check_result"]["corrected_draft"]
+            else:
+                draft_to_improve = state["draft_result"]["initial_draft"]
             
             # Improve the draft
             improved_draft = drafting_agent.improve_answer(
                 research_topic=state["research_topic"],
-                draft=initial_draft
+                draft=draft_to_improve
             )
             
             # Ensure the status is set to complete
@@ -135,11 +205,15 @@ def create_research_workflow() -> StateGraph:
     # Add nodes to the graph - use string values instead of enum members
     workflow.add_node(NodeNames.RESEARCH.value, research)
     workflow.add_node(NodeNames.DRAFT.value, draft)
+    workflow.add_node(NodeNames.FACT_CHECK.value, fact_check) 
+    workflow.add_node(NodeNames.CITATION.value, citation) 
     workflow.add_node(NodeNames.IMPROVE.value, improve)
     
-    # Define the edges - use string values
+    # Define the edges - use string values and update the flow
     workflow.add_edge(NodeNames.RESEARCH.value, NodeNames.DRAFT.value)
-    workflow.add_edge(NodeNames.DRAFT.value, NodeNames.IMPROVE.value)
+    workflow.add_edge(NodeNames.DRAFT.value, NodeNames.FACT_CHECK.value)  
+    workflow.add_edge(NodeNames.FACT_CHECK.value, NodeNames.CITATION.value)  
+    workflow.add_edge(NodeNames.CITATION.value, NodeNames.IMPROVE.value)  
     workflow.add_edge(NodeNames.IMPROVE.value, END)
     
     # Define conditional edges for error handling
@@ -149,6 +223,16 @@ def create_research_workflow() -> StateGraph:
         return NodeNames.DRAFT.value
     
     def route_after_draft(state: ResearchState) -> str:
+        if state["status"] == "error":
+            return END
+        return NodeNames.FACT_CHECK.value  
+    
+    def route_after_fact_check(state: ResearchState) -> str:
+        if state["status"] == "error":
+            return END
+        return NodeNames.CITATION.value
+    
+    def route_after_citation(state: ResearchState) -> str:
         if state["status"] == "error":
             return END
         return NodeNames.IMPROVE.value
@@ -165,6 +249,16 @@ def create_research_workflow() -> StateGraph:
     workflow.add_conditional_edges(
         NodeNames.DRAFT.value,
         route_after_draft
+    )
+    
+    workflow.add_conditional_edges(
+        NodeNames.FACT_CHECK.value,
+        route_after_fact_check
+    )
+    
+    workflow.add_conditional_edges(
+        NodeNames.CITATION.value,
+        route_after_citation
     )
     
     workflow.add_conditional_edges(
@@ -187,8 +281,7 @@ def extract_values_from_state(state):
     Returns:
         A dictionary of extracted values
     """
-    # Different versions of LangGraph return different state formats
-    # Try to extract the values in a compatible way
+    
     if isinstance(state, dict):
         # If it's just a dict, check if it contains values
         if "values" in state:
@@ -207,7 +300,7 @@ def extract_values_from_state(state):
         try:
             return dict(state)
         except:
-            # Last resort: try to access common attributes
+            # Access common attributes
             result = {}
             for attr in ["research_topic", "research_depth", "num_queries", 
                         "research_results", "draft_result", "final_answer", 
@@ -219,7 +312,9 @@ def extract_values_from_state(state):
 def run_research_workflow(
     research_topic: str,
     research_depth: str = "basic",
-    num_queries: int = 3
+    num_queries: int = 3,
+    skip_fact_check: bool = False,
+    skip_citations: bool = False
 ) -> Dict[str, Any]:
     """
     Run the research workflow on a given topic.
@@ -228,6 +323,8 @@ def run_research_workflow(
         research_topic: The topic to research
         research_depth: The depth of research ("basic" or "advanced")
         num_queries: The number of search queries to generate
+        skip_fact_check: Whether to skip the fact-checking step
+        skip_citations: Whether to skip the citation formatting step
         
     Returns:
         A dictionary containing the research results, draft, and final answer
@@ -248,11 +345,66 @@ def run_research_workflow(
         "research_depth": research_depth,
         "num_queries": num_queries,
         "research_results": {},
-        "draft_result": {},  # Updated to use new key name
+        "draft_result": {}, 
+        "fact_check_result": {}, 
+        "citation_result": {}, 
         "final_answer": "",
         "status": "research",
         "error": ""
     }
+    
+    # Handle skipping steps if requested
+    if skip_fact_check and skip_citations:
+        print("Skipping fact-checking and citation formatting steps")
+        # Modify the workflow to skip from draft to improve
+        workflow.add_edge(NodeNames.DRAFT.value, NodeNames.IMPROVE.value)
+        
+        # Update the conditional edge for draft node
+        def route_after_draft_skip_both(state: ResearchState) -> str:
+            if state["status"] == "error":
+                return END
+            return NodeNames.IMPROVE.value
+        
+        workflow.add_conditional_edges(
+            NodeNames.DRAFT.value,
+            route_after_draft_skip_both
+        )
+        
+    elif skip_fact_check:
+        print("Skipping fact-checking step")
+        # Modify the workflow to skip from draft to citation
+        workflow.add_edge(NodeNames.DRAFT.value, NodeNames.CITATION.value)
+        
+        # Update the conditional edge for draft node
+        def route_after_draft_skip_fact_check(state: ResearchState) -> str:
+            if state["status"] == "error":
+                return END
+            return NodeNames.CITATION.value
+        
+        workflow.add_conditional_edges(
+            NodeNames.DRAFT.value,
+            route_after_draft_skip_fact_check
+        )
+        
+    elif skip_citations:
+        print("Skipping citation formatting step")
+        # Modify the workflow to skip from fact-check to improve
+        workflow.add_edge(NodeNames.FACT_CHECK.value, NodeNames.IMPROVE.value)
+        
+        # Update the conditional edge for fact-check node
+        def route_after_fact_check_skip_citations(state: ResearchState) -> str:
+            if state["status"] == "error":
+                return END
+            return NodeNames.IMPROVE.value
+        
+        workflow.add_conditional_edges(
+            NodeNames.FACT_CHECK.value,
+            route_after_fact_check_skip_citations
+        )
+    
+    # Recompile the workflow if we made changes
+    if skip_fact_check or skip_citations:
+        graph = workflow.compile()
     
     # Variables to track the state at each step
     final_state_raw = None
@@ -260,6 +412,8 @@ def run_research_workflow(
     last_node_state = {
         "research": None,
         "draft": None,
+        "fact_check": None,
+        "citation": None,
         "improve": None
     }
     last_node_name = None
