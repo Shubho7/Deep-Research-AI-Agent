@@ -11,8 +11,8 @@ DeepResearchAI leverages Google's Gemini LLM models (`gemini-1.5-flash` & `gemin
 - **AI-powered research**: Utilizes Google Gemini LLM models for generating search queries and synthesizing information
 - **Web search integration**: Uses Tavily API to search the web for up-to-date information
 - **Customizable research depth**: Choose between basic and advanced research depths
-- **User-friendly interface**: Easy-to-use Streamlit UI for interacting with the system
 - **Markdown output**: Research is provided in Markdown format, easy to use in documentation
+- **PDF export**: Ability to save research results as professionally formatted PDF documents
 - **Advanced LangChain integration**: Leverages LangChain's components for prompt management, memory, and callbacks
 - **LangGraph workflow**: Implements a sophisticated state machine for research orchestration
 
@@ -49,11 +49,11 @@ TAVILY_API_KEY=your_tavily_api_key_here
 python main.py --topic "Your research topic" --depth basic --queries 3
 ```
 
-Optional arguments:
 - `--topic`: The research topic (required)
 - `--depth`: Research depth (basic or advanced, default: basic)
 - `--queries`: Number of search queries to generate (default: 3)
-- `--output`: Output file path for the research results in JSON format
+
+After research completion, you'll be asked if you want to save the results as a PDF document.
 
 ## How It Works
 
@@ -62,7 +62,7 @@ DeepResearchAI implements a sophisticated dual-agent architecture orchestrated t
 ### Agent Architecture
 
 1. **Research Agent**: Responsible for information gathering and synthesis
-   - Implements a LangChain `RunnableAgent` with Gemini 1.5 Pro (context window: 1M tokens)
+   - Implements a LangChain `RunnableAgent`
    - Uses structured output parsing with Pydantic models for consistent data handling
    - Generates optimized search queries using few-shot learning techniques
    - Executes web searches via Tavily API to crawl relevant websites
@@ -71,7 +71,7 @@ DeepResearchAI implements a sophisticated dual-agent architecture orchestrated t
    - Uses token counting to optimize context window usage
 
 2. **Drafting Agent**: Transforms research into structured content
-   - Implements a LangChain `RunnableAgent` with Gemini 1.0 Pro (temperature: 0.2 for factual content)
+   - Implements a LangChain `RunnableAgent`
    - Creates initial drafts based on synthesized research using structured templates
    - Uses `ConversationSummaryMemory` to maintain context across drafting iterations
    - Improves content quality through a dedicated review process with custom evaluation metrics
@@ -103,6 +103,7 @@ This workflow is managed by a StateGraph that tracks the research process and ha
 - `utils/`: Utility functions and configuration
   - `config.py`: System configuration and environment variables
   - `tavily_client.py`: Client wrapper for the Tavily search API
+  - `pdf_export.py`: Utility functions for PDF document generation
 
 ## Implementation Details
 
@@ -111,8 +112,8 @@ This workflow is managed by a StateGraph that tracks the research process and ha
 The system leverages LangChain's comprehensive framework for LLM application development:
 
 - **Model Integration**: Uses `ChatGoogleGenerativeAI` to interface with Google's Gemini models:
-  - Gemini 1.0 Pro for standard research tasks and query generation
-  - Gemini 1.5 Pro for advanced synthesis and long-context understanding
+  - `gemini-2.0-flash` for standard research tasks and query generation
+  - `gemini-1.5-flash` for synthesis and long-context understanding
   - Configurable temperature and top_p parameters for controlling output creativity
 
 - **Prompt Engineering**: Implements sophisticated prompt management:
