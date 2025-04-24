@@ -1,6 +1,3 @@
-"""
-Research agent that searches for information using Tavily.
-"""
 from typing import Dict, List, Any, Optional
 import traceback
 from agents.base_agent import BaseAgent

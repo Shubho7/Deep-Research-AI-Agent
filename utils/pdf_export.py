@@ -1,4 +1,3 @@
-"""PDF export utilities for the DeepResearchAI system."""
 import os
 import re
 from datetime import datetime

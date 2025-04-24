@@ -1,6 +1,3 @@
-"""
-Tavily API client wrapper for the DeepResearchAI system.
-"""
 from typing import Dict, List, Optional, Any
 import json
 import traceback

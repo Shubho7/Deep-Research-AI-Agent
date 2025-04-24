@@ -1,6 +1,3 @@
-"""
-Agent modules for the DeepResearchAI system.
-"""
 from agents.base_agent import BaseAgent
 from agents.research_agent import ResearchAgent
 from agents.drafting_agent import DraftingAgent

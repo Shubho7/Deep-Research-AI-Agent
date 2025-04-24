@@ -1,6 +1,3 @@
-"""
-Drafting agent that creates structured answers from research.
-"""
 from typing import Dict, List, Any, Optional
 import traceback
 from agents.base_agent import BaseAgent
@@ -153,14 +150,14 @@ class DraftingAgent(BaseAgent):
         print(f"\n=== Starting drafting for topic: '{research_topic}' ===")
         try:
             # Draft the initial answer
-            print("Step 1: Creating initial draft...")
+            print("Creating initial draft...")
             draft = self.draft_answer(research_topic, research_synthesis)
             self.add_to_memory({"type": "draft", "content": draft})
             
             # Improve the draft if requested
             final_answer = draft
             if improve:
-                print("Step 2: Improving draft...")
+                print("Improving draft...")
                 final_answer = self.improve_answer(research_topic, draft)
                 self.add_to_memory({"type": "improved_draft", "content": final_answer})
             
