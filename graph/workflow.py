@@ -1,6 +1,3 @@
-"""
-LangGraph workflow for orchestrating the research and drafting agents.
-"""
 from typing import Dict, List, Any, Annotated, TypedDict, Literal
 from enum import Enum
 import json
@@ -183,8 +180,7 @@ def create_research_workflow() -> StateGraph:
             print(f"IMPROVE NODE: Final answer preview: {improved_draft[:50]}...")
             print(f"IMPROVE NODE: Status is set to: {result_state['status']}")
             
-            # DIRECT FIX: Store the result directly in global state for the parent function to use
-            # This works around any state transition issues in LangGraph
+            # Store the result directly in global state for the parent function to use
             global _latest_research_result
             _latest_research_result = {
                 "research_topic": state["research_topic"],
@@ -313,8 +309,8 @@ def run_research_workflow(
     research_topic: str,
     research_depth: str = "basic",
     num_queries: int = 3,
-    skip_fact_check: bool = False,
-    skip_citations: bool = False
+    skip_fact_check: bool = False,  # Parameter kept for backward compatibility but will be ignored
+    skip_citations: bool = False  # Parameter kept for backward compatibility but will be ignored
 ) -> Dict[str, Any]:
     """
     Run the research workflow on a given topic.
@@ -323,8 +319,8 @@ def run_research_workflow(
         research_topic: The topic to research
         research_depth: The depth of research ("basic" or "advanced")
         num_queries: The number of search queries to generate
-        skip_fact_check: Whether to skip the fact-checking step
-        skip_citations: Whether to skip the citation formatting step
+        skip_fact_check: DEPRECATED - Fact-checking is now always included for accuracy
+        skip_citations: DEPRECATED - Citations are now always included for proper source attribution
         
     Returns:
         A dictionary containing the research results, draft, and final answer
@@ -353,58 +349,9 @@ def run_research_workflow(
         "error": ""
     }
     
-    # Handle skipping steps if requested
-    if skip_fact_check and skip_citations:
-        print("Skipping fact-checking and citation formatting steps")
-        # Modify the workflow to skip from draft to improve
-        workflow.add_edge(NodeNames.DRAFT.value, NodeNames.IMPROVE.value)
-        
-        # Update the conditional edge for draft node
-        def route_after_draft_skip_both(state: ResearchState) -> str:
-            if state["status"] == "error":
-                return END
-            return NodeNames.IMPROVE.value
-        
-        workflow.add_conditional_edges(
-            NodeNames.DRAFT.value,
-            route_after_draft_skip_both
-        )
-        
-    elif skip_fact_check:
-        print("Skipping fact-checking step")
-        # Modify the workflow to skip from draft to citation
-        workflow.add_edge(NodeNames.DRAFT.value, NodeNames.CITATION.value)
-        
-        # Update the conditional edge for draft node
-        def route_after_draft_skip_fact_check(state: ResearchState) -> str:
-            if state["status"] == "error":
-                return END
-            return NodeNames.CITATION.value
-        
-        workflow.add_conditional_edges(
-            NodeNames.DRAFT.value,
-            route_after_draft_skip_fact_check
-        )
-        
-    elif skip_citations:
-        print("Skipping citation formatting step")
-        # Modify the workflow to skip from fact-check to improve
-        workflow.add_edge(NodeNames.FACT_CHECK.value, NodeNames.IMPROVE.value)
-        
-        # Update the conditional edge for fact-check node
-        def route_after_fact_check_skip_citations(state: ResearchState) -> str:
-            if state["status"] == "error":
-                return END
-            return NodeNames.IMPROVE.value
-        
-        workflow.add_conditional_edges(
-            NodeNames.FACT_CHECK.value,
-            route_after_fact_check_skip_citations
-        )
-    
-    # Recompile the workflow if we made changes
-    if skip_fact_check or skip_citations:
-        graph = workflow.compile()
+    # Forcing both fact-checking and citations to be always included
+    skip_fact_check = False
+    skip_citations = False
     
     # Variables to track the state at each step
     final_state_raw = None

@@ -1,6 +1,3 @@
-"""
-Base agent class that defines the common interface for all agents in the system.
-"""
 from typing import Dict, List, Any, Optional, Callable
 import traceback
 from langchain.prompts import PromptTemplate
@@ -44,7 +41,7 @@ class BaseAgent:
         if self.llm is None:
             print(f"Failed to initialize {model_name}. Trying fallback models...")
             for fallback_model in FALLBACK_MODELS:
-                if fallback_model != model_name:  # Don't retry the same model
+                if fallback_model != model_name:  
                     print(f"Trying fallback model: {fallback_model}")
                     self.llm = self._initialize_llm(fallback_model)
                     if self.llm is not None:

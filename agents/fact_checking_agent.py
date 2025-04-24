@@ -1,6 +1,3 @@
-"""
-Fact-checking agent that verifies information accuracy.
-"""
 from typing import Dict, List, Any, Optional
 import traceback
 from agents.base_agent import BaseAgent

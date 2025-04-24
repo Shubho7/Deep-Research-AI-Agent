@@ -1,6 +1,3 @@
-"""
-Main entry point for the DeepResearchAI application.
-"""
 import argparse
 import json
 import os
@@ -17,8 +14,7 @@ def main():
     parser.add_argument("--depth", type=str, choices=["basic", "advanced"], default="basic", help="The research depth (basic or advanced)")
     parser.add_argument("--queries", type=int, default=3, help="Number of search queries to generate")
     parser.add_argument("--output", type=str, help="Output file path for the research results (JSON)")
-    parser.add_argument("--skip-fact-check", action="store_true", help="Skip the fact-checking step")
-    parser.add_argument("--skip-citations", action="store_true", help="Skip the citation formatting step")
+    
     args = parser.parse_args()
     
     # Validate configuration
@@ -41,26 +37,23 @@ def main():
         except ValueError:
             args.queries = 3
         
-        fact_check_input = input("Enable fact-checking? (y/n) [default: y]: ").lower()
-        args.skip_fact_check = fact_check_input == 'n'
-        
-        citations_input = input("Enable citation formatting? (y/n) [default: y]: ").lower()
-        args.skip_citations = citations_input == 'n'
+        # Inform the user that both fact-checking and citation formatting are always enabled
+        print("Note: Fact-checking and citation formatting are always enabled to ensure accuracy and proper source attribution.")
     
     # Run the research workflow
     print(f"\nResearch topic: {args.topic}")
     print(f"Research depth: {args.depth}")
     print(f"Number of queries: {args.queries}")
-    print(f"Fact-checking enabled: {not args.skip_fact_check}")
-    print(f"Citation formatting enabled: {not args.skip_citations}")
+    print(f"Fact-checking enabled: Always")
+    print(f"Citation formatting enabled: Always")
     print("\nStarting the research workflow\n")
     
     result = run_research_workflow(
         research_topic=args.topic,
         research_depth=args.depth,
         num_queries=args.queries,
-        skip_fact_check=args.skip_fact_check,
-        skip_citations=args.skip_citations
+        skip_fact_check=False,
+        skip_citations=False
     )
     
     # Print the result

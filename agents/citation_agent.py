@@ -1,6 +1,3 @@
-"""
-Citation agent that formats and validates sources.
-"""
 from typing import Dict, List, Any, Optional
 import traceback
 import re
