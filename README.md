@@ -4,7 +4,12 @@ A deep research AI agentic system built using LangChain, LangGraph, and Tavily.
 
 ## Overview
 
-DeepResearchAI leverages Google's Gemini LLM models (`gemini-1.5-flash` & `gemini-2.0-flash`) to perform comprehensive research on any topic. The system integrates web search capabilities through the Tavily API to gather information and then uses Gemini to synthesize the findings into a coherent research document. The architecture is built on LangChain's component framework and LangGraph's state management system to create a robust, agentic research workflow.
+DeepResearchAI leverages Google's Gemini LLM models like `gemini-2.0-flash`, `gemini-1.5-flash` & `gemini-1.5-pro` to perform comprehensive research on any topic. It integrates web search through the Tavily API, synthesizes findings, drafts content, fact-checks accuracy, formats citations, and exports results to PDF.
+
+The architecture uses:
+- **LangChain** for prompt management, LLM integration, and chain creation
+- **LangGraph** for workflow orchestration and state management
+- **Tavily** for web search and website crawling
 
 ## Features
 
@@ -13,8 +18,8 @@ DeepResearchAI leverages Google's Gemini LLM models (`gemini-1.5-flash` & `gemin
 - **Customizable research depth**: Choose between basic and advanced research depths
 - **Markdown output**: Research is provided in Markdown format, easy to use in documentation
 - **PDF export**: Ability to save research results as professionally formatted PDF documents
-- **Advanced LangChain integration**: Leverages LangChain's components for prompt management, memory, and callbacks
-- **LangGraph workflow**: Implements a sophisticated state machine for research orchestration
+- **LangChain integration**: Uses LangChain's components for prompt management and chain creation
+- **LangGraph workflow**: Implements a state machine for research orchestration
 
 ## Prerequisites
 
@@ -24,168 +29,167 @@ DeepResearchAI leverages Google's Gemini LLM models (`gemini-1.5-flash` & `gemin
 
 ## Installation
 
-1. Clone this repository:
-```bash
-git clone https://github.com/yourusername/Deep-Research-AI-Agent.git
-cd Deep-Research-AI-Agent
-```
+1. Clone the repository:
+    ```bash
+    git clone https://github.com/yourusername/Deep-Research-AI-Agent.git
+    cd Deep-Research-AI-Agent
+    ```
+2. Install dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+3. Set environment variables in a `.env` file:
+    ```dotenv
+    GOOGLE_API_KEY=your_google_api_key
+    TAVILY_API_KEY=your_tavily_api_key
+    ```
 
-2. Install the required dependencies:
-```bash
-pip install -r requirements.txt
-```
+## Project Structure
 
-3. Create a `.env` file in the root directory with your API keys:
 ```
-GOOGLE_API_KEY=your_google_api_key_here
-TAVILY_API_KEY=your_tavily_api_key_here
+Deep-Research-AI-Agent/
+├── main.py               
+├── README.md             
+├── requirements.txt      
+├── agents/                           # Agent implementations
+│   ├── base_agent.py                 # Abstract BaseAgent
+│   ├── research_agent.py             # ResearchAgent
+│   ├── drafting_agent.py             # DraftingAgent
+│   ├── fact_checking_agent.py        # FactCheckingAgent
+│   ├── citation_agent.py             # CitationAgent
+│   └── __init__.py
+├── graph/                            # Workflow orchestration
+│   ├── workflow.py                   # LangGraph state machine
+│   └── __init__.py
+└── utils/                            # Utility modules
+    ├── config.py                     # Configuration loader & constants
+    ├── tavily_client.py              # Tavily API wrapper
+    ├── pdf_export.py                 # PDF export functionality
+    └── __init__.py
 ```
 
 ## Usage
 
-### Using the Command Line Interface
-
 ```bash
-python main.py --topic "Your research topic" --depth basic --queries 3
+python main.py --topic "Your topic" --depth basic --queries 3
 ```
-
-- `--topic`: The research topic (required)
-- `--depth`: Research depth (basic or advanced, default: basic)
-- `--queries`: Number of search queries to generate (default: 3)
+- `--topic` (required)
+- `--depth` (basic|advanced, default: basic)
+- `--queries` (default: 3)
+- Fact-checking and citation agents are always enabled
 
 After research completion, you'll be asked if you want to save the results as a PDF document.
 
-## How It Works
 
-DeepResearchAI implements a sophisticated dual-agent architecture orchestrated through LangGraph and LangChain frameworks:
+## Agent Architecture
 
-### Agent Architecture
+DeepResearchAI implements a multi-agent architecture orchestrated through LangGraph:
 
-1. **Research Agent**: Responsible for information gathering and synthesis
-   - Implements a LangChain `RunnableAgent`
-   - Uses structured output parsing with Pydantic models for consistent data handling
-   - Generates optimized search queries using few-shot learning techniques
-   - Executes web searches via Tavily API to crawl relevant websites
-   - Synthesizes information from multiple sources using advanced retrieval techniques
-   - Implements fallback mechanisms with automatic retry logic for model reliability
-   - Uses token counting to optimize context window usage
+1. **Research Agent (`agents/research_agent.py`)**: Responsible for information gathering and synthesis
+   - Inherits from the `BaseAgent` class
+   - Uses `query_gen_chain` to generate search queries based on the research topic
+   - Executes web searches via Tavily API to gather information
+   - Formats search results into a structured markdown format
+   - Uses `synthesis_chain` to consolidate information and include source citations using [Source: URL] notation
+   - Returns a dictionary with the research topic, queries, search results, and synthesis
 
-2. **Drafting Agent**: Transforms research into structured content
-   - Implements a LangChain `RunnableAgent`
-   - Creates initial drafts based on synthesized research using structured templates
-   - Uses `ConversationSummaryMemory` to maintain context across drafting iterations
-   - Improves content quality through a dedicated review process with custom evaluation metrics
-   - Ensures proper citation and attribution of sources using metadata tracking
-   - Formats output in markdown with customizable templates
-   - Implements content filtering for factual accuracy and relevance
+2. **Drafting Agent (`agents/drafting_agent.py`)**: Transforms research into structured content
+   - Inherits from the `BaseAgent` class
+   - Uses `drafting_chain` to create initial drafts based on the research synthesis
+   - Uses `improve_chain` to refine and enhance the document quality
+   - Has simple memory storage via the `add_to_memory` method inherited from BaseAgent
+   - Returns a dictionary with the initial draft and optionally an improved draft
 
-### Workflow Orchestration
+3. **Fact-Checking Agent (`agents/fact_checking_agent.py`)**: Verifies and corrects factual accuracy in drafts
+   - Uses a `fact_checking_chain` to identify inaccuracies, unsupported claims, and misrepresentations
+   - Produces a detailed `fact_check_report` describing each issue
+   - Uses a `correction_chain` to apply corrections and maintain document flow
+   - Returns a dictionary containing the fact check report and corrected draft
 
-The system uses LangGraph to create a directed workflow with the following stages:
+4. **Citation Agent (`agents/citation_agent.py`)**: Extracts, formats, and validates all citations in the document
+   - Uses an `extraction_chain` to identify existing citations and flag uncited claims
+   - Formats citations to APA style via a `formatting_chain`, adding an auto-generated References section
+   - Validates citations with a `validation_chain` and attempts to split the result into a report and document
+   - Returns a dictionary with citation analysis, formatted draft, validation report, and final draft
 
-1. **Query Generation**: The Research Agent generates targeted search queries based on the research topic
-2. **Web Search & Crawling**: Executes the generated queries using Tavily API to gather information from across the web
-3. **Information Synthesis**: The Research Agent consolidates and synthesizes the search results
-4. **Initial Drafting**: The Drafting Agent creates a structured first draft of the research document
-5. **Review & Improvement**: The Drafting Agent refines the draft for better quality and readability
+## LangGraph Workflow Orchestration (`graph/workflow.py`)
 
-This workflow is managed by a StateGraph that tracks the research process and handles transitions between different stages, ensuring a comprehensive research outcome.
+The system uses LangGraph's StateGraph to create a directed workflow with the following nodes:
 
-## Project Structure
+1. **research_node**: Uses ResearchAgent to generate queries, perform searches, and synthesize information
+2. **draft_node**: Uses DraftingAgent to create an initial draft based on the synthesis
+3. **fact_check_node**: Uses FactCheckingAgent to verify and correct the draft
+4. **citation_node**: Uses CitationAgent to standardize and validate citations
+5. **improve_node**: Uses DraftingAgent.improve_answer() to make a final pass on the document
 
-- `main.py`: Command-line interface for running research workflows
-- `agents/`: Contains the agent implementations
-  - `base_agent.py`: Abstract base class defining common agent functionality
-  - `research_agent.py`: Implementation of the Research Agent for information gathering
-  - `drafting_agent.py`: Implementation of the Drafting Agent for content creation
-- `graph/`: Contains the workflow orchestration
-  - `workflow.py`: LangGraph implementation of the research workflow
-- `utils/`: Utility functions and configuration
-  - `config.py`: System configuration and environment variables
-  - `tavily_client.py`: Client wrapper for the Tavily search API
-  - `pdf_export.py`: Utility functions for PDF document generation
+This workflow is managed by a StateGraph with explicit edges:
+1. **StateGraph** with typed `ResearchState` containing fields for tracking state
+2. **Linear Flow**: research → draft → fact_check → citation → improve → END
+3. **Error Handling**: Conditional edges route to END if any node reports an error
+4. **Global Variable**: `_latest_research_result` captures the final output
+5. **Parameters**: `skip_fact_check` & `skip_citations` exist for backward compatibility but are forced to `False`
+6. **Return Value**: Dictionary with research topic, status, research results, and final answer
 
 ## Implementation Details
 
 ### LangChain Integration
 
-The system leverages LangChain's comprehensive framework for LLM application development:
+The system uses LangChain in the following ways:
 
 - **Model Integration**: Uses `ChatGoogleGenerativeAI` to interface with Google's Gemini models:
-  - `gemini-2.0-flash` for standard research tasks and query generation
-  - `gemini-1.5-flash` for synthesis and long-context understanding
-  - Configurable temperature and top_p parameters for controlling output creativity
+  - `gemini-1.5-pro` for the ResearchAgent
+  - `gemini-1.5-flash` for the DraftingAgent and CitationAgent
+  - `gemini-2.0-flash` for the FactCheckingAgent
 
-- **Prompt Engineering**: Implements sophisticated prompt management:
-  - Uses `ChatPromptTemplate` and `MessagesPlaceholder` for structured conversations
-  - Implements few-shot learning with carefully crafted examples
-  - Utilizes system messages to define agent roles and constraints
+
+- **Prompt Engineering**: 
+  - Uses `PromptTemplate` to create templates for each agent's chains
+  - Creates prompts that define agent roles and goals
 
 - **Chain Construction**:
-  - Creates `SequentialChain` objects for multi-step reasoning processes
-  - Implements `RunnablePassthrough` for efficient data handling between chain steps
-  - Uses `RunnableLambda` for custom data transformations
+  - In `BaseAgent.create_chain()`, creates simple chains using a pattern of: 
+    - `prompt | self.llm` which is wrapped in a callable function
+  - Returns a dictionary with the output under a specified key
 
-- **Memory Systems**:
-  - Implements `ConversationBufferMemory` for maintaining context across interactions
-  - Uses `ConversationSummaryMemory` for long research sessions
-  - Leverages token-based memory management to stay within model context limits
+- **Memory System**:
+  - Simple list-based memory via `BaseAgent.add_to_memory(data)` and `clear_memory()`
+  - Stores intermediate results during agent operations
 
-- **Callbacks & Observability**:
-  - Implements custom callback handlers for logging and debugging
-  - Uses tracing for performance monitoring and optimization
-  - Provides detailed metrics on token usage and latency
+- **Error Handling**:
+  - Try/except blocks around chain execution and agent operations
+  - Fallback behaviors when errors occur (e.g., returning original draft if correction fails)
+  - Model fallback system in `BaseAgent` that tries alternative models if the primary fails
 
 ### LangGraph Workflow
 
-The research process is implemented as a directed graph using LangGraph's state management system:
+The research process is implemented as a StateGraph in `graph/workflow.py`:
 
-- **StateGraph Architecture**:
-  - Implements a `StateGraph` with typed nodes for each research phase
-  - Uses `RunnableBranch` for conditional logic between workflow stages
-  - Maintains a persistent state object that tracks the entire research process
-  - Implements checkpointing for reliability and resumability
+- **StateGraph Components**:
+  - Defines a `ResearchState` TypedDict for state tracking
+  - Creates nodes for each processing step (research, draft, fact-check, citation, improve)
+  - Sets up linear edges between nodes and conditional edges for error handling
+  - Captures final state for return to the caller
 
-- **State Transitions**:
-  - Defines explicit transitions between research, drafting, and improvement phases
-  - Uses conditional edges based on quality assessments and completion criteria
-  - Implements fallback paths for handling model limitations or API failures
-  - Provides cycle detection to prevent infinite loops in the research process
+- **State Management**:
+  - Passes state between nodes with each node returning an updated state
+  - Uses `extract_values_from_state` to handle different state object formats
+  - Uses global variable `_latest_research_result` to capture final output
 
-- **Event-Driven Processing**:
-  - Implements event listeners for monitoring state changes
-  - Uses event handlers for logging and debugging
-  - Provides real-time feedback on research progress
-
-- **Parallel Processing**:
-  - Implements parallel execution for independent research tasks
-  - Uses thread management for concurrent API calls
-  - Optimizes resource utilization during information gathering phases
+- **Error Handling**:
+  - Each node function has try/except blocks to catch errors
+  - Conditional edges check the status and route to END on error
+  - Multiple fallback mechanisms for extracting results from partial successes
 
 ### Tavily Integration
 
-The system uses Tavily's API for web crawling and information retrieval, tightly integrated with the LangChain ecosystem:
+The system uses Tavily's API for web search via `utils/tavily_client.py`:
 
 - **Search Configuration**:
   - Configurable search depth (basic or advanced)
-  - Customizable result limits and domain filtering
-  - Support for both general search and specific answer extraction
-  - Implements content filtering and NSFW protection
+  - Customizable result limits (`MAX_SEARCH_RESULTS=20`)
+  - Support for domain inclusion/exclusion
 
-- **LangChain Tool Integration**:
-  - Implements Tavily as a LangChain Tool for agent usage
-  - Uses structured output parsing for consistent data handling
-  - Integrates with LangChain's caching system for efficient resource usage
-
-- **Error Handling**:
-  - Implements exponential backoff for rate limiting
-  - Uses circuit breakers for API reliability
-  - Provides fallback mechanisms for search failures
-  - Maintains detailed logging for troubleshooting
-
-## Acknowledgments
-
-- Google Gemini for providing the LLM models
-- Tavily API for web search capabilities and website crawling
-- LangChain for LLM integration and chain-of-thought processing
-- LangGraph for workflow orchestration and state management
+- **API Integration**:
+  - Wraps the Tavily Python client
+  - Handles errors and provides fallback behavior
+  - Formats results for downstream processing
